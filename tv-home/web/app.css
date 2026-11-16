@@ -351,6 +351,7 @@ html.still .tile.focus .face, html.still .tile.focus .face::after { animation: n
   text-shadow: 0 0.125rem 1.125rem rgba(0, 0, 0, 0.25); transition: opacity 600ms ease-in-out;
 }
 .theme-night .date .wx { color: rgba(255, 255, 255, 0.78); font-weight: 400; }
+.theme-night .date:not(.weather-lines) .wx { margin-left: 0.55em; }   /* a gap between the date and the weather */
 .theme-night .date { white-space: nowrap; }
 .theme-night .date.weather-lines { white-space: normal; }
 .theme-night .date.weather-lines .dline {

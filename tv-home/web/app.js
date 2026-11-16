@@ -56,7 +56,7 @@
   // read in readConfig() once the page starts (mock.js fills them in for previews). See docs/CONFIG.md.
   var CFG = {}, HOME = {}, TVCFG = {}, QUICK = [];
   var WXCFG = { lat: -33.8688, lon: 151.2093, place: "Sydney", timezone: "Australia/Sydney" };
-  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend"];
+  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend", "liturgy", "forecast"];
   // The most personal photos this TV keeps (also MAX_PHOTOS in bridge/server.py and MainActivity.kt).
   var MAX_PHOTOS = 50;
   var ON_TV = false;   // served by the on-TV app (config "mode"), which can open the TV's own settings screens
@@ -106,6 +106,8 @@
   // Home settings made on this TV with the gear tile (see "home settings" below). They win over
   // config.js. ST is the saved object; the rest are read from it in readConfig().
   var ST = {}, WX_SHOW = true, WX_F = false, WX_EVERY = 30, HIDDEN_TV = [];
+  // liturgy.js reads the weather place, the unit and the clock from here
+  window.CouchHome = { weather: function () { return WXCFG; }, fahrenheit: function () { return WX_F; }, clock24: function () { return CLOCK24; } };
   var IDLE_PHOTO_STEPS = [0, 5, 10, 15, 30, 60];
   var IDLE_PHOTO_SECONDS = 0, idlePhotoTimer = null, idlePhotoActive = false;
   var WX_AMBIENT = true, WX_SUN_GRADE = true;
@@ -251,6 +253,8 @@
     store: '<svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 10.5V7a3 3 0 0 1 6 0v3.5"/></svg>',
     check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     devmode: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 3.5V8h-4.5"/></svg>',
+    cross: '<svg viewBox="0 0 24 24"><path d="M12 3v18M7 8h10"/></svg>',
+    forecast: '<svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M9 2.5v1.3M3.8 9H2.5M4.4 4.4l.9.9M13.6 4.4l-.9.9"/><path d="M8.5 19.5h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.3 1.4A2.8 2.8 0 0 0 8.5 19.5z"/></svg>',
     // Now playing's buttons (filled shapes)
     prev: '<svg viewBox="0 0 24 24" class="solid"><path d="M7 6h2v12H7zM20 6v12l-9-6z"/></svg>',
     next: '<svg viewBox="0 0 24 24" class="solid"><path d="M15 6h2v12h-2zM4 6v12l9-6z"/></svg>',
@@ -1106,6 +1110,7 @@
       data.weather = j;
       clock();
       updateAmbientWeather();
+      if (quickReady && QUICK.indexOf("forecast") >= 0) renderQuick();   // the Forecast button shows the temperature
     }, function () {});
   }
 
@@ -1588,6 +1593,8 @@
       if (q === "bluetooth" || q === "network") return nativeSettingsScreen() || (ON_TV && !OFFLINE);
       if (q === "tvsettings") return !!(TV && (TV.launch || TV.openSettings)) || !OFFLINE;
       if (q === "extend") return devOn();
+      if (q === "liturgy") return !!window.Liturgy;   // liturgy.js: Saint of the Day
+      if (q === "forecast") return !!window.Liturgy && WX_SHOW;   // liturgy.js: hourly, 5 days and NWS alerts
       return false;
     });
   }
@@ -1642,6 +1649,11 @@
         el.innerHTML = ICONS[q] + "<span>" + esc(t(q)) + "</span>";
       } else if (q === "tvsettings") {
         el.innerHTML = ICONS.gear + "<span>" + esc(t("gear_tv")) + "</span>";
+      } else if (q === "liturgy") {
+        el.innerHTML = ICONS.cross + "<span>" + esc(t("quick_liturgy")) + "</span>";
+      } else if (q === "forecast") {
+        var fw = data.weather && data.weather.temp != null ? tempText(data.weather.temp) : t("quick_forecast");
+        el.innerHTML = ICONS.forecast + "<span>" + esc(fw) + "</span>";
       }
     });
     var sv = $("q-screensaver");   // an icon only look (Night) still says what it is, to the eye and to a screen reader
@@ -1922,6 +1934,8 @@
     else if (q === "extend") devExtend();
     else if (q === "bluetooth" || q === "network") openSettingsScreen(q);
     else if (q === "tvsettings") openTvSettings();
+    else if (q === "liturgy" && window.Liturgy) window.Liturgy.openSaint();
+    else if (q === "forecast" && window.Liturgy) window.Liturgy.openForecast();
   }
   // Headphones: the TV's own Bluetooth screen. The launcher opens it itself, the on-TV app through
   // its /api/launch, and the bridge with a fixed ADB command (POST /api/bluetooth-audio, no body).
@@ -4969,7 +4983,8 @@
 
   // the native side calls these
   // Home on the remote also re-reads the lists, so an order arranged on the phone shows straight away
-  window.tv = { back: function () { if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; goHome(); resetIdlePhoto(); resetSmartIdle(); },
+  window.tv = { back: function () { if (window.Liturgy && window.Liturgy.isOpen()) { window.Liturgy.close(); return; }   // Back closes a Saint or Forecast panel first
+    if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; goHome(); resetIdlePhoto(); resetSmartIdle(); },
     home: function () { forgetFocus(); if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; if (zone === "settings") closeSettings(); else goHome(); refresh(); resetIdlePhoto(); resetSmartIdle(); },
     screenOff: function () { toggleScreenOff(true); },
     wakeScreen: function () { toggleScreenOff(false); },
@@ -4977,7 +4992,7 @@
     noDream: function () { note(t("no_dream")); },
     // the remote's Settings/gear key, caught by the launcher natively (MainActivity.dispatchKeyEvent)
     settingsKey: function () { blip(0, 0); settingsKey(); },
-    resume: function () { toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); },
+    resume: function () { toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.Liturgy) window.Liturgy.refresh(); resetIdlePhoto(); },
     // an app is in front: the video background stops until the home is back
     pause: function () { saveFocusNow(); pauseVideo(); },
     // the launcher's file picker has copied the chosen photos into its own storage (Home settings)

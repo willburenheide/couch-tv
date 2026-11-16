@@ -348,6 +348,8 @@
     ambient_settings_sub: "Which albums show while the TV is idle.",
     quick_bluetooth: "Bluetooth devices",
     quick_network: "Network",
+    quick_liturgy: "Saint of the Day",
+    quick_forecast: "Forecast",
     quick_tvsettings: "TV settings",
     quick_needs_tv_app: "Needs the on-TV app",
     quick_needs_bridge: "Needs the computer",

@@ -440,7 +440,7 @@ CUSTOM_CARDS = custom_cards.source((CONFIG.get("home") or {}).get("custom_cards"
                                    os.path.dirname(os.path.abspath(CONFIG_FILE)))
 
 # ---------- quick settings (per TV) and picture modes ----------
-QUICK_IDS = ["sleep", "picture", "look", "soundscape", "screen_off", "input", "screensaver", "headphones", "tvsettings", "extend"]
+QUICK_IDS = ["sleep", "picture", "look", "soundscape", "screen_off", "input", "screensaver", "headphones", "bluetooth", "network", "tvsettings", "extend", "liturgy", "forecast"]
 
 
 def quick_for(tv_cfg):

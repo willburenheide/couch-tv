@@ -595,6 +595,55 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun launch(pkg: String): Boolean = launchPackage(pkg)
 
+        /** Saint of the Day (liturgy.js): Franciscan Media's feed sends no CORS header, so the app
+         *  fetches it, off the main thread, and hands the XML to the page. This one fixed address only. */
+        @JavascriptInterface
+        fun saintFeed(): Boolean {
+            Thread {
+                val xml = try {
+                    val c = java.net.URL("https://www.franciscanmedia.org/saint-of-the-day/feed/").openConnection() as HttpURLConnection
+                    c.connectTimeout = 15000; c.readTimeout = 20000
+                    c.instanceFollowRedirects = true
+                    c.setRequestProperty("User-Agent", "couch-tv")
+                    try { if (c.responseCode in 200..299) c.inputStream.bufferedReader().use { it.readText() } else "" } finally { c.disconnect() }
+                } catch (e: Exception) { "" }
+                runOnUiThread { js("window.Liturgy && Liturgy.saintReply(" + JSONObject.quote(xml) + ")") }
+            }.start()
+            return true
+        }
+
+        /** The saint's picture: the story page's preview image (og:image), as Clean TV Home does, since
+         *  the feed's own pictures are newsletter adverts. Only pages on franciscanmedia.org. */
+        @JavascriptInterface
+        fun saintImage(page: String): Boolean {
+            if (!page.startsWith("https://www.franciscanmedia.org/")) return false
+            Thread {
+                var img = ""
+                try {
+                    val c = java.net.URL(page).openConnection() as HttpURLConnection
+                    c.connectTimeout = 10000; c.readTimeout = 15000
+                    c.setRequestProperty("User-Agent", "couch-tv")
+                    val og = Regex("property=\"og:image\"\\s+content=\"([^\"]+)\"|content=\"([^\"]+)\"\\s+property=\"og:image\"")
+                    try {
+                        val head = StringBuilder()
+                        c.inputStream.bufferedReader().use { r ->
+                            while (true) {
+                                val line = r.readLine() ?: break
+                                head.append(line).append('\n')
+                                if (line.contains("og:image")) {
+                                    og.find(head)?.let { m -> img = m.groupValues[1].ifEmpty { m.groupValues[2] } }
+                                    if (img.isNotEmpty()) break
+                                }
+                                if (line.contains("</head>") || head.length > 120_000) break
+                            }
+                        }
+                    } finally { c.disconnect() }
+                } catch (e: Exception) {}
+                if (img.startsWith("https://")) runOnUiThread { js("window.Liturgy && Liturgy.saintImage(" + JSONObject.quote(img) + ")") }
+            }.start()
+            return true
+        }
+
         /** Opens an http(s) web link in the TV's browser (used by custom cards with a url). */
         @JavascriptInterface
         fun openUrl(url: String): Boolean {
