@@ -393,6 +393,7 @@
     NIGHT = THEME === "night";
     OLED = THEME === "oled";
     document.documentElement.classList.toggle("theme-night", NIGHT);
+    document.documentElement.classList.toggle("pin-clock", HOME.pin_clock === true);   // home.pin_clock: the clock stays put when the scene changes
     document.documentElement.classList.toggle("theme-oled", OLED);
     GLASS = glassSetting();
     document.documentElement.classList.toggle("glass", GLASS !== "off");

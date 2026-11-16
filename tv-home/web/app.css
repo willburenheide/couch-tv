@@ -1992,3 +1992,8 @@ html.dock-mac.theme-night .app.hop { animation: dock-hop 520ms 1; }
   html.dock-mac.theme-night .app, html.dock-mac.theme-night .grid, html.dock-mac.theme-night .app .label { transition: none; }
   html.dock-mac.theme-night .app.hop { animation: none; }
 }
+
+/* home.pin_clock: the clock, date and weather keep one place on every scene instead of each scene's own.
+   Lower than the default so the date clears the quick buttons and never has to slide aside. */
+.pin-clock .scene .gclock { left: 0; right: auto; width: 100%; top: 15rem; font-size: 25rem; text-align: center; }
+.pin-clock.theme-night .date { left: 0; right: 0; top: 12rem; text-align: center; }
