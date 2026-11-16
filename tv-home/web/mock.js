@@ -86,6 +86,7 @@
   if (arg("secs")) cfg.home.scene_seconds = parseInt(arg("secs"), 10);
   if (arg("sunsync")) cfg.home.sun_sync = arg("sunsync") === "1" || arg("sunsync") === "true";
   if (arg("myscenes")) try { cfg.home.my_scenes = JSON.parse(arg("myscenes")); } catch (e) {}
+  if (arg("pin") === "1") cfg.home.pin_clock = true;   // pin=1: home.pin_clock, the clock in one place on every scene
   if (arg("glass")) cfg.home.glass = arg("glass");
   if (arg("moving")) cfg.home.moving_tiles = arg("moving") !== "off";
   if (arg("dock")) cfg.home.dock = arg("dock");
