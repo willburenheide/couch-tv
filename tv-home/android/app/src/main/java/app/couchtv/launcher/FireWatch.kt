@@ -56,11 +56,14 @@ class FireWatch : AccessibilityService() {
 
     override fun onInterrupt() {}
 
+    /** home.catch_home_key (or Xiaomi), read when the service binds; apply.sh rebinds it after a config change. */
+    @Volatile private var catchHome = false
+
     /** Xiaomi TVs (issue #54), and any TV whose config.json sets home.catch_home_key: the Home press
      *  opens couch-tv straight away, so the TV's own home never flashes up first. Every other TV's
      *  Home key is left exactly as before. */
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (!catchesHome(this)) return false
+        if (!catchHome) return false
         val homeKey = event.keyCode == KeyEvent.KEYCODE_HOME ||
             (isXiaomi() && event.keyCode == KeyEvent.KEYCODE_BUTTON_5 && event.scanCode == XIAOMI_MI_SCAN)
         if (!homeKey || CrashGuard.standingAside(this)) return false
@@ -72,7 +75,8 @@ class FireWatch : AccessibilityService() {
         connected = true
         // Key filtering is switched on at run time, only on Xiaomi or with home.catch_home_key, so no
         // other TV sees key presses here.
-        if (catchesHome(this)) runCatching {
+        catchHome = catchesHome(this)   // read once: every key on the TV passes through onKeyEvent
+        if (catchHome) runCatching {
             serviceInfo = serviceInfo.also { it.flags = it.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS }
         }
         homeClasses = homeActivitiesOf(this)

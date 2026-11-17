@@ -352,6 +352,8 @@ def _home(h):
         out["keep_watching"] = h["keep_watching"]
     if isinstance(h.get("catch_home_key"), bool):   # FireWatch.kt: Home opens couch-tv with no flash of the TV's home
         out["catch_home_key"] = h["catch_home_key"]
+    if isinstance(h.get("down_to_first_app"), bool):   # Down from Keep watching always lands on the first dock app
+        out["down_to_first_app"] = h["down_to_first_app"]
     if isinstance(h.get("pin_clock"), bool):   # one clock place for every scene (app.css, .pin-clock)
         out["pin_clock"] = h["pin_clock"]
     if isinstance(h.get("ambient_music"), bool):

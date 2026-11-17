@@ -90,7 +90,7 @@ class Translatable(unittest.TestCase):
     def test_every_language_has_the_sentences(self):
         root = Path(__file__).parents[1]
         for f in ("tv-home/web/i18n.js", "remote/src/i18n.js"):
-            src = (root / f).read_text()
+            src = (root / f).read_text(encoding="utf-8")
             for key, english in lg.LGTV.DEVMODE_WARNINGS.items():
                 found = re.findall(r"\b%s: ['\"](.+?)['\"],\n" % key, src)
                 langs = 15 if f.startswith("tv-home") else 10

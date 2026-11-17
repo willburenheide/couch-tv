@@ -1594,7 +1594,7 @@
       if (q === "bluetooth" || q === "network") return nativeSettingsScreen() || (ON_TV && !OFFLINE);
       if (q === "tvsettings") return !!(TV && (TV.launch || TV.openSettings)) || !OFFLINE;
       if (q === "extend") return devOn();
-      if (q === "liturgy") return !!window.Liturgy;   // liturgy.js: Saint of the Day
+      if (q === "liturgy") return !!(window.Liturgy && TV && TV.saintFeed);   // liturgy.js: Saint of the Day, fetched by the TV app
       if (q === "forecast") return !!window.Liturgy && WX_SHOW;   // liturgy.js: hourly, 5 days and NWS alerts
       return false;
     });
@@ -3033,8 +3033,9 @@
       else if (dx) s = Math.max(0, Math.min(shelfEls.length - 1, s + dx));
       else if (dy < 0) { if (peopleOn()) toPeople(); else if (!NIGHT && npReach()) zone = "np"; else if (hasQuick()) { zone = "quick"; qi = 0; } }
       else if (dy > 0 && gridEls.length) {
-        // always the first app in the dock, from any show
-        g = 0;
+        // home.down_to_first_app: always the first app in the dock; otherwise the app under the show
+        if (HOME.down_to_first_app === true) g = 0;
+        else { var b = shelfEls[s].getBoundingClientRect(); g = nearestInRow(0, b.left + b.width / 2); }
         zone = "grid";
       }
     } else {
@@ -3044,7 +3045,7 @@
         if (nx >= 0 && nx < gridEls.length && Math.floor(nx / GRID_COLS) === row) g = nx;
       } else if (dy < 0 && row === 0) {
         // Up from the top row of More apps closes it and goes to Keep watching, like scrolling back up
-        if (expanded && shelfEls.length) { expanded = false; dockBack = null; renderGrid(); zone = "shelf"; s = Math.min(s, shelfEls.length - 1); }
+        if (NIGHT && expanded && shelfEls.length) { expanded = false; dockBack = null; renderGrid(); zone = "shelf"; s = Math.min(s, shelfEls.length - 1); }
         else if (cards.length) zone = "shelf";
         else if (npReach()) {
           if (AMBIENT_MUSIC && music) {

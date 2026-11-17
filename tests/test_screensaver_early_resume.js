@@ -30,8 +30,10 @@ const early = Number((kt.match(/AMBIENT_EARLY_MS = ([\d_]+)L/) || [])[1].replace
 const window_ = Number((kt.match(/AMBIENT_WINDOW_MS = ([\d_]+)L/) || [])[1].replace(/_/g, ''));
 assert(early >= 2000 && early < window_, 'the guard is longer than the 0.5 s seen and well inside the window');
 
-// the button says what it is: a name under the Night look, an accessible name, and a line in Home settings.
-assert(/#q-screensaver span \{ display: inline; \}/.test(css), 'Night look still shows the Screensaver name');
+// the button says what it is: an icon like the other quick buttons (its name is its tooltip and its
+// accessible name), and a line in Home settings.
+assert(!/#q-screensaver span \{ display: inline; \}/.test(css), 'the Screensaver button is an icon like the others');
+assert(/setAttribute\("title", t\("quick_screensaver_sub"\)\)/.test(js), 'the Screensaver button keeps its tooltip');
 assert(/getElementById|\$\("q-screensaver"\)/.test(js) && /setAttribute\("aria-label", t\("quick_screensaver"\)\)/.test(js), 'aria-label');
 assert(/q === "screensaver"\) return nativeScreensaver\(\) \? t\("quick_screensaver_sub"\)/.test(js), 'sub label in quick button help');
 assert(/quick_screensaver_sub:/.test(i18n), 'the sub label has words');

@@ -571,6 +571,20 @@ class MainActivity : Activity() {
         return type
     }
 
+    /** A web page's text, at most maxChars of it, or "" on any failure (for the saint helpers above). */
+    private fun fetchText(url: String, maxChars: Int): String = try {
+        val c = java.net.URL(url).openConnection() as HttpURLConnection
+        c.connectTimeout = 15000; c.readTimeout = 20000
+        c.setRequestProperty("User-Agent", "couch-tv")
+        try {
+            if (c.responseCode !in 200..299) "" else c.inputStream.bufferedReader().use { r ->
+                val buf = CharArray(8192); val sb = StringBuilder()
+                while (sb.length < maxChars) { val n = r.read(buf); if (n < 0) break; sb.append(buf, 0, n) }
+                sb.toString()
+            }
+        } finally { c.disconnect() }
+    } catch (e: Exception) { "" }
+
     private fun js(code: String) {
         web?.takeIf { pageReady }?.evaluateJavascript(code, null)
     }
@@ -600,13 +614,7 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun saintFeed(): Boolean {
             Thread {
-                val xml = try {
-                    val c = java.net.URL("https://www.franciscanmedia.org/saint-of-the-day/feed/").openConnection() as HttpURLConnection
-                    c.connectTimeout = 15000; c.readTimeout = 20000
-                    c.instanceFollowRedirects = true
-                    c.setRequestProperty("User-Agent", "couch-tv")
-                    try { if (c.responseCode in 200..299) c.inputStream.bufferedReader().use { it.readText() } else "" } finally { c.disconnect() }
-                } catch (e: Exception) { "" }
+                val xml = fetchText("https://www.franciscanmedia.org/saint-of-the-day/feed/", 2_000_000)
                 runOnUiThread { js("window.Liturgy && Liturgy.saintReply(" + JSONObject.quote(xml) + ")") }
             }.start()
             return true
@@ -618,27 +626,9 @@ class MainActivity : Activity() {
         fun saintImage(page: String): Boolean {
             if (!page.startsWith("https://www.franciscanmedia.org/")) return false
             Thread {
-                var img = ""
-                try {
-                    val c = java.net.URL(page).openConnection() as HttpURLConnection
-                    c.connectTimeout = 10000; c.readTimeout = 15000
-                    c.setRequestProperty("User-Agent", "couch-tv")
-                    val og = Regex("property=\"og:image\"\\s+content=\"([^\"]+)\"|content=\"([^\"]+)\"\\s+property=\"og:image\"")
-                    try {
-                        val head = StringBuilder()
-                        c.inputStream.bufferedReader().use { r ->
-                            while (true) {
-                                val line = r.readLine() ?: break
-                                head.append(line).append('\n')
-                                if (line.contains("og:image")) {
-                                    og.find(head)?.let { m -> img = m.groupValues[1].ifEmpty { m.groupValues[2] } }
-                                    if (img.isNotEmpty()) break
-                                }
-                                if (line.contains("</head>") || head.length > 120_000) break
-                            }
-                        }
-                    } finally { c.disconnect() }
-                } catch (e: Exception) {}
+                val head = fetchText(page, 120_000)   // og:image is in the page's head
+                val m = Regex("property=\"og:image\"\\s+content=\"([^\"]+)\"|content=\"([^\"]+)\"\\s+property=\"og:image\"").find(head)
+                val img = m?.let { it.groupValues[1].ifEmpty { it.groupValues[2] } } ?: ""
                 if (img.startsWith("https://")) runOnUiThread { js("window.Liturgy && Liturgy.saintImage(" + JSONObject.quote(img) + ")") }
             }.start()
             return true

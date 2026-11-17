@@ -247,7 +247,8 @@ class Password(unittest.TestCase):
 class BrightScript(unittest.TestCase):
     @unittest.skipUnless((ROKU / "node_modules" / ".bin" / "bsc").exists(), "run `npm install` in roku/ for the BrightScript check")
     def test_compiles_and_lints_clean(self):
-        r = subprocess.run([str(ROKU / "node_modules" / ".bin" / "bsc")], cwd=ROKU, capture_output=True, text=True, timeout=120)
+        bsc = ROKU / "node_modules" / ".bin" / ("bsc.cmd" if os.name == "nt" else "bsc")   # npm's Windows launcher is a .cmd
+        r = subprocess.run([str(bsc)], cwd=ROKU, capture_output=True, text=True, timeout=120)
         out = r.stdout + r.stderr
         self.assertEqual(r.returncode, 0, out)
         self.assertNotRegex(out, r"\b(error|warning) BS")

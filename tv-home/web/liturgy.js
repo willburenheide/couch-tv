@@ -24,7 +24,7 @@
   var DOT = { red: "#e53935", green: "#43a047", purple: "#8e44ad", violet: "#8e44ad", rose: "#f48fb1", pink: "#f48fb1", gold: "#ffc107", black: "#9e9e9e" };
   var GLOW = { red: "198,40,40", green: "46,158,68", purple: "123,31,162", violet: "123,31,162", rose: "224,86,155", pink: "224,86,155", black: "69,90,100" };
   var DEG = "°", DROP = "💧";
-  var today = null, alerts = [], panel = null, saintCache = null;
+  var today = null, alerts = [], panel = null, panelKind = "", saintCache = null;
 
   function home() { return window.CouchHome || null; }
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; }
@@ -64,6 +64,7 @@
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (j) {
         var days = summarise(j.litcal || []);
+        if (Object.keys(days).length < 300) return days;   // a partial or odd answer: use it today, ask again next time
         store("litcal2." + year, JSON.stringify(days));
         store("litcal2." + (year - 1), ""); store("litcal." + year, "");   // last year's copy is no longer needed
         return days;
@@ -136,8 +137,9 @@
   }
 
   // ------------------------------------------------------------------ panels
-  function openPanel(title, sub, body) {
+  function openPanel(title, sub, body, kind) {
     closePanel();
+    panelKind = kind || "";
     panel = document.createElement("div");
     panel.className = "lit-panel";
     panel.innerHTML = '<div class="lit-card"><h1 class="lit-title"></h1><p class="lit-sub"></p>' +
@@ -149,7 +151,7 @@
     document.body.appendChild(panel);
     return panel;
   }
-  function closePanel() { if (panel) { panel.remove(); panel = null; } }
+  function closePanel() { if (panel) { panel.remove(); panel = null; } panelKind = ""; }
   function setPanel(title, sub, body) {
     if (!panel) return;
     if (title != null) panel.querySelector(".lit-title").textContent = title;
@@ -181,7 +183,7 @@
   function openSaint() {
     var d = new Date();
     var sub = (today && today.t ? today.t + " · " : "") + d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    openPanel("Saint of the Day", sub, wait("Loading…"));
+    openPanel("Saint of the Day", sub, wait("Loading…"), "saint");
     if (saintCache && saintCache.day === ymd(d)) { showSaint(saintCache); return; }
     var asked = false;
     try { asked = !!(TV && TV.saintFeed && TV.saintFeed()); } catch (e) {}
@@ -189,6 +191,7 @@
   }
 
   function saintReply(xml) {
+    if (panelKind !== "saint" && !xml) return;
     if (!xml) { setPanel(null, null, wait("Couldn't load today's saint. Check the internet connection and try again.")); return; }
     try {
       var doc = new DOMParser().parseFromString(xml, "text/xml");
@@ -202,11 +205,11 @@
       })[0] || items[0];
       var html = get(item, "content:encoded") || get(item, "encoded") || get(item, "description");
       saintCache = { day: ymd(now), title: get(item, "title"), html: html, img: "" };
-      if (panel) showSaint(saintCache);
+      if (panelKind === "saint") showSaint(saintCache);
       var link = get(item, "link").trim();
       try { if (link && TV && TV.saintImage) TV.saintImage(link); } catch (e) {}
     } catch (e) {
-      setPanel(null, null, wait("Couldn't read today's saint."));
+      if (panelKind === "saint") setPanel(null, null, wait("Couldn't read today's saint."));
     }
   }
 
@@ -215,7 +218,7 @@
   function saintImage(url) {
     if (!saintCache || !/^https:\/\//.test(url)) return;
     saintCache.img = url;
-    if (panel) showSaint(saintCache);
+    if (panelKind === "saint") showSaint(saintCache);
   }
 
   // The story as plain paragraphs with the saint's picture on top; image credits dropped (as SaintCard.java).
@@ -255,7 +258,8 @@
 
   function openForecast() {
     var w = wx();
-    openPanel(w && w.place ? String(w.place).split(",")[0] : "Weather", "", wait("Loading…"));
+    openPanel(w && w.place ? String(w.place).split(",")[0] : "Weather", "", wait("Loading…"), "forecast");
+    var mine = panel;   // the reply only fills this panel, not one opened since
     if (!w || !isFinite(w.lat)) { setPanel(null, null, wait("No weather place is set.")); return; }
     var h = home(), F = h && h.fahrenheit ? h.fahrenheit() : true, c24 = clock24();
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + w.lat + "&longitude=" + w.lon +
@@ -266,6 +270,7 @@
       "&timezone=" + encodeURIComponent(w.timezone || "auto") + "&forecast_days=5";
     refreshAlerts();
     fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      if (panel !== mine) return;
       var out = "", D = j.daily, H = j.hourly;
       if (j.current) {
         var c = j.current;
@@ -299,7 +304,7 @@
       });
       out += '<p class="lit-credit">Open-Meteo' + (alerts.length ? " · National Weather Service" : "") + "</p>";
       setPanel(null, null, out);
-    }, function () { setPanel(null, null, wait("Couldn't load the forecast. Check the internet connection.")); });
+    }, function () { if (panel === mine) setPanel(null, null, wait("Couldn't load the forecast. Check the internet connection.")); });
   }
 
   // ------------------------------------------------------------------ styles and start

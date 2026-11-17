@@ -22,6 +22,10 @@ def line(title, tv, who, days_ago=0.0, **extra):
 
 class KeepWatchingTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        # a fresh "now" for every test: taken once at import, a test that runs minutes into the full
+        # suite saw its "watched again" line dated before the hide it had just made
+        global NOW
+        NOW = datetime.now(timezone.utc)
         import config
         self._orig_people = config.PEOPLE
         self._orig_people_ids = config.PEOPLE_IDS
