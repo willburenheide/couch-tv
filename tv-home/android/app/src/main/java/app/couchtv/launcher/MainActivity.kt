@@ -620,6 +620,18 @@ class MainActivity : Activity() {
             return true
         }
 
+        /** A Franciscan Media page (the Saint of the Day index or one saint's page), for when the feed
+         *  has not caught up with today yet. Only pages on franciscanmedia.org. */
+        @JavascriptInterface
+        fun saintPage(page: String): Boolean {
+            if (!page.startsWith("https://www.franciscanmedia.org/saint-of-the-day/")) return false
+            Thread {
+                val html = fetchText(page, 600_000)
+                runOnUiThread { js("window.Liturgy && Liturgy.pageReply(" + JSONObject.quote(page) + "," + JSONObject.quote(html) + ")") }
+            }.start()
+            return true
+        }
+
         /** The saint's picture: the story page's preview image (og:image), as Clean TV Home does, since
          *  the feed's own pictures are newsletter adverts. Only pages on franciscanmedia.org. */
         @JavascriptInterface

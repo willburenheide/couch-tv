@@ -190,27 +190,74 @@
     if (!asked) setPanel(null, null, wait("The saint's story needs the couch-tv TV app."));
   }
 
+  // Today's saint, as the frame dashboard picks it: the feed item dated today (the feed's years are
+  // wrong, so month and day only). The feed can lag behind the website (on 16 November 2026 its newest
+  // item was still the 15th), so then the Saint of the Day page's newest saints are read, and one is
+  // used only if its own heading says "Saint of the Day for <today>". Never another day's saint.
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  var SITE = "https://www.franciscanmedia.org/saint-of-the-day/";
+  var siteLeft = [];   // the saint pages still to try for today
+
   function saintReply(xml) {
-    if (panelKind !== "saint" && !xml) return;
+    if (panelKind !== "saint") return;
     if (!xml) { setPanel(null, null, wait("Couldn't load today's saint. Check the internet connection and try again.")); return; }
     try {
       var doc = new DOMParser().parseFromString(xml, "text/xml");
       var items = [].slice.call(doc.getElementsByTagName("item"));
-      if (!items.length) throw new Error("no item");
       var get = function (item, tag) { var n = item.getElementsByTagName(tag)[0]; return n ? n.textContent : ""; };
-      // the item for today's date (the feed runs a day ahead), else the newest, as SaintCard.java
       var now = new Date(), item = items.filter(function (it) {
-        var d = new Date(get(it, "pubDate"));
-        return !isNaN(d) && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-      })[0] || items[0];
+        var m = /(\d{1,2}) ([A-Z][a-z]{2})/.exec(get(it, "pubDate"));
+        return m && +m[1] === now.getDate() && m[2] === MONTHS[now.getMonth()].slice(0, 3);
+      })[0];
+      if (!item) { askPage(SITE); return; }   // not in the feed yet: the website
       var html = get(item, "content:encoded") || get(item, "encoded") || get(item, "description");
       saintCache = { day: ymd(now), title: get(item, "title"), html: html, img: "" };
-      if (panelKind === "saint") showSaint(saintCache);
+      showSaint(saintCache);
       var link = get(item, "link").trim();
       try { if (link && TV && TV.saintImage) TV.saintImage(link); } catch (e) {}
     } catch (e) {
-      if (panelKind === "saint") setPanel(null, null, wait("Couldn't read today's saint."));
+      setPanel(null, null, wait("Couldn't read today's saint."));
     }
+  }
+
+  function askPage(url) {
+    var ok = false;
+    try { ok = !!(TV && TV.saintPage && TV.saintPage(url)); } catch (e) {}
+    if (!ok) notPosted();
+  }
+  function notPosted() {
+    if (panelKind === "saint") setPanel(null, null, wait("Franciscan Media hasn't posted today's saint yet. Try again a little later."));
+  }
+
+  // The TV app's answer to saintPage(): the Saint of the Day index, or one saint's page.
+  function pageReply(url, html) {
+    if (panelKind !== "saint") return;
+    if (!html) { notPosted(); return; }
+    if (url === SITE) {
+      var seen = {};
+      siteLeft = (html.match(/https:\/\/www\.franciscanmedia\.org\/saint-of-the-day\/[a-z0-9-]+\//g) || [])
+        .filter(function (u) { if (seen[u] || /\/(sort|calendar|feed|page)\//.test(u)) return false; return (seen[u] = true); })
+        .slice(0, 2);
+    } else {
+      var now = new Date(), want = ">Saint of the Day for " + MONTHS[now.getMonth()] + " " + now.getDate() + "<";
+      var at = html.indexOf(want);
+      if (at >= 0) {
+        var from = html.lastIndexOf("<h", at), refl = html.indexOf(">Reflection<", at);
+        var to = refl > 0 ? html.indexOf("<hr", refl) : -1;
+        if (to < 0) to = refl > 0 ? refl + 6000 : at + 12000;
+        var meta = function (prop) {
+          var m = new RegExp('<meta[^>]+property="' + prop + '"[^>]+content="([^"]+)"', "i").exec(html);
+          var d = document.createElement("textarea"); d.innerHTML = m ? m[1] : ""; return d.value;   // &amp; and the like
+        };
+        var img = meta("og:image");
+        saintCache = { day: ymd(now), title: meta("og:title").replace(/\s*\|\s*Franciscan Media\s*$/i, ""),
+          html: html.slice(from, to).replace(/<h\d[^>]*>\s*Saint of the Day for [^<]*<\/h\d>/i, ""), img: /^https:\/\//.test(img) ? img : "" };
+        showSaint(saintCache);
+        return;
+      }
+    }
+    if (siteLeft.length) askPage(siteLeft.shift());
+    else notPosted();
   }
 
   // The saint's picture, from the story page (the TV app reads its og:image): the feed's own
@@ -351,6 +398,7 @@
     openSaint: openSaint,
     openForecast: openForecast,
     saintReply: saintReply,
+    pageReply: pageReply,
     saintImage: saintImage,
     isOpen: function () { return !!panel; },
     close: closePanel,
