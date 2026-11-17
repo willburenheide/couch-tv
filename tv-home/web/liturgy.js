@@ -35,8 +35,8 @@
   function rankLabel(g) { return { 2: "Optional memorial", 3: "Memorial", 4: "Feast", 5: "Feast of the Lord", 6: "Solemnity", 7: "Solemnity" }[g] || ""; }
   function shortName(n) { var i = n.indexOf(","); return i > 0 ? n.slice(0, i) : n; }
 
-  // For each date the highest-ranking celebration (vigil Masses left out), plus the first optional
-  // memorial when the day itself is only a weekday. Same rules as Clean TV Home's Liturgy.java.
+  // For each date the highest-ranking celebration (vigil Masses left out), plus every optional
+  // memorial when the day itself is only a weekday (some days have two or three).
   function summarise(events) {
     var days = {}, best = {};
     events.forEach(function (e) {
@@ -45,7 +45,7 @@
       if (date.length < 10) return;
       var g = e.grade || 0, color = (e.color && e.color[0]) || "white";
       var day = days[date] || (days[date] = {});
-      if (g === 2) { if (!day.o) day.o = shortName(e.name || ""); return; }
+      if (g === 2) { (day.o || (day.o = [])).push(shortName(e.name || "")); return; }
       if (g > (best[date] == null ? -1 : best[date])) {
         best[date] = g;
         day.t = e.name || "";
@@ -58,14 +58,14 @@
   }
 
   function loadYear(year) {
-    var kept = store("litcal." + year);
+    var kept = store("litcal2." + year);
     if (kept) { try { return Promise.resolve(JSON.parse(kept)); } catch (e) {} }
     return fetch(LITCAL + year, { headers: { Accept: "application/json" } })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (j) {
         var days = summarise(j.litcal || []);
-        store("litcal." + year, JSON.stringify(days));
-        store("litcal." + (year - 1), "");   // last year's copy is no longer needed
+        store("litcal2." + year, JSON.stringify(days));
+        store("litcal2." + (year - 1), ""); store("litcal." + year, "");   // last year's copy is no longer needed
         return days;
       });
   }
@@ -84,7 +84,8 @@
     if (!today || !today.t) { el.innerHTML = ""; el.classList.remove("on"); setGlow(null); return; }
     var parts = [esc(today.t)];
     if (today.r) parts.push(esc(today.r));
-    if (today.o) parts.push("or " + esc(today.o));
+    var opt = today.o ? [].concat(today.o) : [];
+    if (opt.length) parts.push("or " + opt.map(esc).join(" or "));
     el.innerHTML = '<span class="lit-dot" style="background:' + (DOT[today.c] || "#f7f3e8") + '"></span>' + parts.join(" &middot; ");
     el.classList.add("on");
     setGlow(today.c);
@@ -304,7 +305,7 @@
   // ------------------------------------------------------------------ styles and start
   var css = document.createElement("style");
   css.textContent = [
-    ".litcal{display:none;margin-top:.5rem;font-size:1.25rem;line-height:1.75rem;color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.55)}",
+    ".litcal{display:none;max-width:46vw;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.5rem;font-size:1.25rem;line-height:1.75rem;color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.55)}",
     ".litcal.on{display:block}",
     ".lit-dot{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.55rem;vertical-align:.05rem;box-shadow:0 0 0 2px rgba(255,255,255,.25)}",
     ".lit-glow{position:fixed;inset:0;pointer-events:none;z-index:0;transition:background 1.2s}",
