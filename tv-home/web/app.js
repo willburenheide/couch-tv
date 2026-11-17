@@ -3033,9 +3033,8 @@
       else if (dx) s = Math.max(0, Math.min(shelfEls.length - 1, s + dx));
       else if (dy < 0) { if (peopleOn()) toPeople(); else if (!NIGHT && npReach()) zone = "np"; else if (hasQuick()) { zone = "quick"; qi = 0; } }
       else if (dy > 0 && gridEls.length) {
-        // land on the app under the show
-        var b = shelfEls[s].getBoundingClientRect();
-        g = nearestInRow(0, b.left + b.width / 2);
+        // always the first app in the dock, from any show
+        g = 0;
         zone = "grid";
       }
     } else {
