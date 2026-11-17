@@ -350,6 +350,8 @@ def _home(h):
     # false hides the whole Keep watching row and stops the home asking for it. Home settings win over it.
     if isinstance(h.get("keep_watching"), bool):
         out["keep_watching"] = h["keep_watching"]
+    if isinstance(h.get("catch_home_key"), bool):   # FireWatch.kt: Home opens couch-tv with no flash of the TV's home
+        out["catch_home_key"] = h["catch_home_key"]
     if isinstance(h.get("pin_clock"), bool):   # one clock place for every scene (app.css, .pin-clock)
         out["pin_clock"] = h["pin_clock"]
     if isinstance(h.get("ambient_music"), bool):

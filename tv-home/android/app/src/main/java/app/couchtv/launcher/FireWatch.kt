@@ -56,11 +56,13 @@ class FireWatch : AccessibilityService() {
 
     override fun onInterrupt() {}
 
-    /** Xiaomi TVs only (issue #54): every other TV's Home key is left exactly as before. */
+    /** Xiaomi TVs (issue #54), and any TV whose config.json sets home.catch_home_key: the Home press
+     *  opens couch-tv straight away, so the TV's own home never flashes up first. Every other TV's
+     *  Home key is left exactly as before. */
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (!isXiaomi()) return false
+        if (!catchesHome(this)) return false
         val homeKey = event.keyCode == KeyEvent.KEYCODE_HOME ||
-            (event.keyCode == KeyEvent.KEYCODE_BUTTON_5 && event.scanCode == XIAOMI_MI_SCAN)
+            (isXiaomi() && event.keyCode == KeyEvent.KEYCODE_BUTTON_5 && event.scanCode == XIAOMI_MI_SCAN)
         if (!homeKey || CrashGuard.standingAside(this)) return false
         if (event.action == KeyEvent.ACTION_UP && event.repeatCount == 0) bringBack()
         return true
@@ -68,8 +70,9 @@ class FireWatch : AccessibilityService() {
 
     override fun onServiceConnected() {
         connected = true
-        // Key filtering is switched on at run time and only on Xiaomi, so no other TV sees key presses here.
-        if (isXiaomi()) runCatching {
+        // Key filtering is switched on at run time, only on Xiaomi or with home.catch_home_key, so no
+        // other TV sees key presses here.
+        if (catchesHome(this)) runCatching {
             serviceInfo = serviceInfo.also { it.flags = it.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS }
         }
         homeClasses = homeActivitiesOf(this)
@@ -238,6 +241,11 @@ class FireWatch : AccessibilityService() {
         // MiTV-MOOQ1's Mi-logo key reports BUTTON_5 with this scan code, not KEYCODE_HOME.
         private const val XIAOMI_MI_SCAN = 580
         private fun isXiaomi() = Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
+        /** home.catch_home_key in the settings MainActivity keeps (prefs "home", key "config"). */
+        fun catchesHome(c: android.content.Context): Boolean = isXiaomi() || runCatching {
+            org.json.JSONObject(c.getSharedPreferences("home", android.content.Context.MODE_PRIVATE).getString("config", null) ?: "{}")
+                .optJSONObject("home")?.optBoolean("catch_home_key", false) == true
+        }.getOrDefault(false)
         const val GOOGLE_TV_HOME = "com.google.android.apps.tv.launcherx"
         const val ANDROID_TV_HOME = "com.google.android.tvlauncher"
         /** Bell's Fibe TV app (Bell Streamer, Canada): its MainTvActivity is the box's HOME, and also its live TV. */

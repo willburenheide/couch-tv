@@ -82,11 +82,11 @@
     var el = $("litcal");
     if (!el) return;
     if (!today || !today.t) { el.innerHTML = ""; el.classList.remove("on"); setGlow(null); return; }
-    var parts = [esc(today.t)];
-    if (today.r) parts.push(esc(today.r));
+    // "Monday of the 33rd Week of Ordinary Time – Saint Margaret of Scotland or Saint Gertrude the Great"
+    var line = esc(today.t) + (today.r ? " &middot; " + esc(today.r) : "");
     var opt = today.o ? [].concat(today.o) : [];
-    if (opt.length) parts.push("or " + opt.map(esc).join(" or "));
-    el.innerHTML = '<span class="lit-dot" style="background:' + (DOT[today.c] || "#f7f3e8") + '"></span>' + parts.join(" &middot; ");
+    if (opt.length) line += " &ndash; " + opt.map(esc).join(" or ");
+    el.innerHTML = '<span class="lit-dot" style="background:' + (DOT[today.c] || "#f7f3e8") + '"></span>' + line;
     el.classList.add("on");
     setGlow(today.c);
   }
@@ -305,7 +305,7 @@
   // ------------------------------------------------------------------ styles and start
   var css = document.createElement("style");
   css.textContent = [
-    ".litcal{display:none;max-width:46vw;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.5rem;font-size:1.25rem;line-height:1.75rem;color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.55)}",
+    ".litcal{display:none;max-width:46vw;margin-left:auto;padding:.2rem 0 .2rem .25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.3rem;font-size:1.25rem;line-height:1.75rem;color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.55)}",
     ".litcal.on{display:block}",
     ".lit-dot{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;margin-right:.55rem;vertical-align:.05rem;box-shadow:0 0 0 2px rgba(255,255,255,.25)}",
     ".lit-glow{position:fixed;inset:0;pointer-events:none;z-index:0;transition:background 1.2s}",
