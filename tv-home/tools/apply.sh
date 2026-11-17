@@ -296,8 +296,20 @@ if [ -n "${BRIDGE_URL:-}" ]; then
 fi
 
 echo "4/4  Pressing Home"
+# The watch was dropped by the force-stop above and rebinds a few seconds later. A Home press before
+# that leaves the TV's own home in front with nothing to bring couch-tv back (seen on a Sony Bravia:
+# Home at +5.2 s, the watch bound at +6.0 s), so wait for it, up to 15 s.
+i=0
+while [ $i -lt 15 ] && ! "$PY" "$T" shell "dumpsys accessibility" 2>/dev/null | grep -q "Bound services:.*Home button watch"; do
+  sleep 1; i=$((i + 1))
+done
 "$PY" "$T" keys HOME || true
 sleep 3
+# Still the TV's own home (the watch did not see it come forward): open couch-tv itself.
+case "$("$PY" "$T" shell "dumpsys window | grep -m1 mCurrentFocus" 2>/dev/null || true)" in
+  *app.couchtv.launcher*) ;;
+  *) "$PY" "$T" shell "am start -n $HOME_ACT" > /dev/null 2>&1 || true; sleep 2 ;;
+esac
 
 echo "switched off (undo list): $LIST"
 cat "$LIST"
