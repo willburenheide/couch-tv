@@ -620,6 +620,17 @@ class MainActivity : Activity() {
             return true
         }
 
+        /** Today's Gospel (liturgy.js): Word on Fire's Daily Gospel Reflections feed sends no CORS header
+         *  either, so the app fetches it for the page. This one fixed address only. */
+        @JavascriptInterface
+        fun gospelFeed(): Boolean {
+            Thread {
+                val xml = fetchText("https://www.wordonfire.org/reflections/feed/", 3_000_000)
+                runOnUiThread { js("window.Liturgy && Liturgy.gospelReply(" + JSONObject.quote(xml) + ")") }
+            }.start()
+            return true
+        }
+
         /** A Franciscan Media page (the Saint of the Day index or one saint's page), for when the feed
          *  has not caught up with today yet. Only pages on franciscanmedia.org. */
         @JavascriptInterface
