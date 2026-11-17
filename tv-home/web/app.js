@@ -3043,7 +3043,9 @@
         var nx = g + dx;
         if (nx >= 0 && nx < gridEls.length && Math.floor(nx / GRID_COLS) === row) g = nx;
       } else if (dy < 0 && row === 0) {
-        if (cards.length) zone = "shelf";
+        // Up from the top row of More apps closes it and goes to Keep watching, like scrolling back up
+        if (expanded && shelfEls.length) { expanded = false; dockBack = null; renderGrid(); zone = "shelf"; s = Math.min(s, shelfEls.length - 1); }
+        else if (cards.length) zone = "shelf";
         else if (npReach()) {
           if (AMBIENT_MUSIC && music) {
             ambientOpen = true;
