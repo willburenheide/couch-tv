@@ -2369,7 +2369,9 @@
     var keep = Math.max(0, DOCK_APPS - inputs.length);   // pinned inputs take dock places, so they are never pushed behind More apps
     var items = shown.slice(0, keep).concat(inputs, shown.slice(keep), screens, rest.filter(tucked));
     var line = Math.min(DOCK_APPS, shown.length + inputs.length);
-    var o = data.order;
+    // home.app_order in config.json: an order shared by every TV, used until apps are arranged on the TV itself
+    var o = data.order || (Array.isArray(HOME.app_order) && HOME.app_order.length ?
+      { saved: true, line: typeof HOME.app_line === "number" ? HOME.app_line : DOCK_APPS, packages: HOME.app_order } : null);
     if (o && o.saved) {
       var at = {};
       o.packages.forEach(function (p, i) { at[p] = i; });

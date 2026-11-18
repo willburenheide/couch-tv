@@ -354,6 +354,11 @@ def _home(h):
         out["catch_home_key"] = h["catch_home_key"]
     if isinstance(h.get("down_to_first_app"), bool):   # Down from Keep watching always lands on the first dock app
         out["down_to_first_app"] = h["down_to_first_app"]
+    order = h.get("app_order")
+    if isinstance(order, list):   # an app order shared by every TV (app.js arrangeItems), until arranged on the TV
+        out["app_order"] = [p for p in dict.fromkeys(order) if isinstance(p, str) and re.fullmatch(r"[A-Za-z0-9_.]{1,200}", p)][:60]
+    if isinstance(h.get("app_line"), int) and 0 <= h["app_line"] <= 24:
+        out["app_line"] = h["app_line"]
     if isinstance(h.get("pin_clock"), bool):   # one clock place for every scene (app.css, .pin-clock)
         out["pin_clock"] = h["pin_clock"]
     if isinstance(h.get("ambient_music"), bool):
